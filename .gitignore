@@ -4,8 +4,10 @@
 !CMakeLists.txt
 !*.h
 !*.cpp
+!*.png
 !.gitignore
 !README.md
 !demo_code_editor.pro
-/build
-/node-sim
+!/bin
+!/build
+
