@@ -1,2 +1,11 @@
-build/
-bin/
+*.*
+*
+!*/
+!CMakeLists.txt
+!*.h
+!*.cpp
+!.gitignore
+!README.md
+!demo_code_editor.pro
+/build
+/node-sim

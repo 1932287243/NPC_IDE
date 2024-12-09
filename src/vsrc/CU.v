@@ -2,6 +2,8 @@ import "DPI-C" function void npc_state(input int flag, input int inst_to_sdb);
 module CU(
     input       [31:0]  inst,
     output              rf_wr_en,
+    output              csrf_wr_en,
+    output  reg [1:0]   csr_inst_sel,
     output  reg [1:0]   rf_wr_sel,
     output              do_jump,
     output  reg [2:0]   BrType,
@@ -62,6 +64,16 @@ module CU(
     wire    is_i_type;
     wire    is_s_type;
 
+    wire    is_csrrw;
+    wire    is_csrrs;
+    wire    is_csrrc;  
+    wire    is_csrwi; 
+    wire    is_csrsi; 
+    wire    is_csrci; 
+    wire    is_csr;
+
+    wire    is_ecall;
+    wire    is_mret;
     assign  opcode  = inst[6:0];
     assign  funct7  = inst[31:25];
     assign  funct3  = inst[14:12];
@@ -104,6 +116,18 @@ module CU(
     assign  is_or   = (opcode == 7'h33) && (funct3 ==3'h6) && (funct7 == 7'h00);
     assign  is_and  = (opcode == 7'h33) && (funct3 ==3'h7) && (funct7 == 7'h00);
 
+    assign  is_csrrw  = (opcode == 7'h73) && (funct3 ==3'h1);
+    assign  is_csrrs  = (opcode == 7'h73) && (funct3 ==3'h2);
+    assign  is_csrrc  = (opcode == 7'h73) && (funct3 ==3'h3);  
+    assign  is_csrwi  = (opcode == 7'h73) && (funct3 ==3'h5); 
+    assign  is_csrsi  = (opcode == 7'h73) && (funct3 ==3'h6); 
+    assign  is_csrci  = (opcode == 7'h73) && (funct3 ==3'h7); 
+
+    assign  is_ecall = (inst == 32'b00000000000000000000000001110011);
+    assign  is_mret  = (inst == 32'b00110000001000000000000001110011);
+
+    assign  is_csr = is_csrrw | is_csrrs | is_csrrc | is_csrwi | is_csrsi | is_csrci;
+
     assign  is_add_type = is_auipc | is_jal | is_jalr | is_b_type | is_s_type 
                         | is_lb | is_lh | is_lw | is_lbu | is_lhu | is_add | is_addi ;
     assign  is_u_type   = is_lui | is_auipc ;
@@ -116,30 +140,43 @@ module CU(
                         | is_slli | is_srli | is_srai ;
     assign  is_s_type   = is_sb | is_sh | is_sw ;
     always @(*)begin
-        if(is_u_type|is_jump_type|is_i_type|is_r_type|is_s_type|is_b_type)
+        if(is_u_type|is_jump_type|is_i_type|is_r_type|is_s_type|is_b_type|is_csr|is_ecall|is_mret)
             npc_state(0, inst);
         else
             npc_state(1, inst);
     end
+    assign csrf_wr_en = is_csr | is_mret | is_ecall;
+
+    always@(*)
+    begin
+        if(is_csrrw)
+            csr_inst_sel = 2'b01;
+        else if(is_csrrs)
+            csr_inst_sel = 2'b10;
+        else if(is_ecall)
+            csr_inst_sel = 2'b11;
+        else   
+            csr_inst_sel = 2'b00;
+    end
+    
     //rf_wr_en  
-    assign rf_wr_en     =   is_u_type || is_jump_type || is_i_type|| is_r_type ;  
-  
+    assign rf_wr_en     =   is_u_type | is_jump_type | is_i_type| is_r_type|is_csr|is_ecall|is_mret;  
     //[1:0]rf_wr_sel
     always@(*)
     begin
-        if(is_jal || is_jalr)
+        if(is_jal | is_jalr)
             rf_wr_sel = 2'b01;
-    else if(is_r_type || is_u_type|| is_addi || is_slti || is_sltiu || is_xori || is_ori || is_andi
-                || is_slli || is_srli || is_srai)
+        else if(is_r_type | is_u_type | is_addi | is_slti | is_sltiu | is_xori | is_ori | is_andi
+                    | is_slli | is_srli | is_srai | is_csr)
             rf_wr_sel = 2'b10;
-    else if(is_lb || is_lh || is_lw || is_lbu || is_lhu )
-        rf_wr_sel = 2'b11;
-    else 
-        rf_wr_sel = 2'b00;
+        else if(is_lb | is_lh | is_lw | is_lbu | is_lhu )
+            rf_wr_sel = 2'b11;
+        else 
+            rf_wr_sel = 2'b00;
     end  
   
     //do_jump
-    assign do_jump      =  (is_jal||is_jalr)?1:0;
+    assign do_jump      =  (is_jal|is_jalr|is_ecall|is_mret)?1:0;
   
     //[2:0]BrType
     always@(*)
@@ -161,10 +198,10 @@ module CU(
     end
   
     //alu_a_sel
-    assign alu_a_sel    = (is_r_type||is_i_type||is_s_type)?1:0;
+    assign alu_a_sel    = (is_r_type|is_i_type|is_s_type|is_csrrs)?1:0;
 
     //alu_b_sel  
-    assign alu_b_sel    =  is_r_type?0:1;
+    assign alu_b_sel    =  (is_r_type|is_csrrs|is_ecall|is_mret)?0:1;
   
     //alu_ctrl
     always@(*)
@@ -185,12 +222,16 @@ module CU(
             alu_ctrl = 4'b0011;
         else if(is_xori|is_xor)
             alu_ctrl = 4'b0100;
-        else if(is_ori|is_or)
+        else if(is_ori|is_or|is_csrrs)
             alu_ctrl = 4'b0110;
         else if(is_andi|is_and)
             alu_ctrl = 4'b0111;
         else if(is_lui)
             alu_ctrl = 4'b1110;
+        else if(is_ecall | is_mret)
+            alu_ctrl = 4'b1001;
+        else if(is_csrrw)
+            alu_ctrl = 4'b1010;
         else
             alu_ctrl = 4'b1111;
     end

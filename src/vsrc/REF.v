@@ -7,11 +7,16 @@ module REF #(ADDR_WIDTH = 1, DATA_WIDTH = 1) (
     output    [DATA_WIDTH-1:0]    rd1, rd2
 );
 
-    reg [DATA_WIDTH-1:0] rf [2**ADDR_WIDTH-1:0];
+    reg [DATA_WIDTH-1:0]    rf      [2**ADDR_WIDTH-1:0];
+
     always @(posedge clk) begin
-        if (wen && (rd!=5'd0)) rf[rd] <= wdata;
+        rf[0] <= 32'h0;
+        if (wen && (rd!=5'd0)) begin
+            rf[rd] <= wdata;
+        end
     end
-    
+
     assign rd1 = rf[rs1];
     assign rd2 = rf[rs2];
+
 endmodule

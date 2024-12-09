@@ -16,7 +16,7 @@
    </font>
   </property>
   <property name="windowTitle">
-   <string>Demo-Notepad</string>
+   <string>YSYX-IDE</string>
   </property>
   <property name="windowIcon">
    <iconset resource="../res/images.qrc">
@@ -139,7 +139,7 @@ QListWidget#listWidget::item:selected {
      <x>0</x>
      <y>0</y>
      <width>1200</width>
-     <height>27</height>
+     <height>25</height>
     </rect>
    </property>
    <property name="font">
@@ -288,6 +288,21 @@ QListWidget#listWidget::item:selected {
    <addaction name="exit"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QToolBar" name="toolBar_6">
+   <property name="windowTitle">
+    <string>toolBar_6</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="debug"/>
+   <addaction name="actionruntocomp"/>
+   <addaction name="actionstep"/>
+   <addaction name="actionstepfunc"/>
+  </widget>
   <action name="new_file">
    <property name="icon">
     <iconset resource="../res/images.qrc">
@@ -522,6 +537,50 @@ QListWidget#listWidget::item:selected {
     <font>
      <pointsize>12</pointsize>
     </font>
+   </property>
+  </action>
+  <action name="actionruntocomp">
+   <property name="icon">
+    <iconset resource="../res/images.qrc">
+     <normaloff>:/images/images/runtocomp.png</normaloff>:/images/images/runtocomp.png</iconset>
+   </property>
+   <property name="text">
+    <string>runtocomp</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+R</string>
+   </property>
+  </action>
+  <action name="actionstep">
+   <property name="icon">
+    <iconset resource="../res/images.qrc">
+     <normaloff>:/images/images/step.png</normaloff>:/images/images/step.png</iconset>
+   </property>
+   <property name="text">
+    <string>step</string>
+   </property>
+  </action>
+  <action name="debug">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <selectedoff>:/images/images/stop_debug.png</selectedoff>
+     <selectedon>:/images/images/start_debug.png</selectedon>
+    </iconset>
+   </property>
+   <property name="text">
+    <string>debug</string>
+   </property>
+  </action>
+  <action name="actionstepfunc">
+   <property name="icon">
+    <iconset resource="../res/images.qrc">
+     <normaloff>:/images/images/step_func.png</normaloff>:/images/images/step_func.png</iconset>
+   </property>
+   <property name="text">
+    <string>stepfunc</string>
    </property>
   </action>
  </widget>

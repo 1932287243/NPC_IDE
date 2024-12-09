@@ -1,6 +1,9 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
+#include "main.h"
+#include "reg.h"
+
 #include <QDebug>
 #include <QFileDialog>
 #include <QMessageBox>
@@ -9,8 +12,7 @@
 #include <QClipboard>
 #include <QDesktopServices>
 #include <QProcess>
-
-unsigned int reg_file_val[32];
+#include <QPixmap>
 
 #if defined(QT_PRINTSUPPORT_LIB)
 #include <QtPrintSupport/qtprintsupportglobal.h>
@@ -28,12 +30,10 @@ MainWindow::MainWindow(int argc, char **argv, QWidget *parent)
     , mFontFamily("Consolas")
     , mFontSize(14)
     , mSplitterLayout(0)
-    , mNPC(new NPC(argc, argv))
 {
     ui->setupUi(this);
     mSettings = new QSettings("settings.ini",QSettings::IniFormat);
     mDir = mSettings->value("config/dir","E:/").toString();
-
 
     //初始化菜单
     initMenu();
@@ -44,32 +44,28 @@ MainWindow::MainWindow(int argc, char **argv, QWidget *parent)
     //初始化动作
     initAction(0);
 
-    mSplitterLayout = new MySplitterLayout(this,mDir,mFontFamily,mFontSize);
-
+    mSplitterLayout = new SplitterLayout(this,mDir,mFontFamily,mFontSize);
+    
     connect(mSplitterLayout,SIGNAL(finishCreateTab(const QString &)),this,SLOT(onFinishCreateTab(const QString &)));
-    connect(mNPC, &NPC::sendNPCInfoToUI, this, &MainWindow::receiveNPCInfo);
-    connect(mNPC, &NPC::sendNPCInfoToUI, mSplitterLayout, &MySplitterLayout::receiveNPCInfo);
-    connect(this, &MainWindow::sendRegValueToUI, mSplitterLayout, &MySplitterLayout::receiveRegInfo);
-    connect(mNPC, &NPC::destroyWindow, this, &MainWindow::onDestroyWindow);
-    connect(mNPC, &NPC::sendDiffError, mSplitterLayout, &MySplitterLayout::receiveDiffError);
+    connect(ui->actionruntocomp, &QAction::triggered, this, &MainWindow::exec);
+    connect(ui->actionstep, &QAction::triggered, this, &MainWindow::execOne);
+    connect(ui->debug, &QAction::toggled, this, &MainWindow::isDebugMode);
+
     // 创建一个布局并将 QSplitter 添加到布局中
     QVBoxLayout *layout = new QVBoxLayout(ui->page);
     layout->addWidget(mSplitterLayout);
-    showFullScreen();
+    
     connect(ui->listWidget, &QListWidget::itemClicked, this, &MainWindow::onItemClicked);
 
 #if !QT_CONFIG(printer)
     ui->print->setEnabled(false);
 #endif
-    mNPC->init_npc();
-    mNPC->start();
-    mSplitterLayout->splitterlayoutInit((unsigned int *)mem_addr, image_size);
+
 }
 
 MainWindow::~MainWindow()
 {
-    delete ui;
-    delete mNPC;
+
 }
 
 void MainWindow::initFont(){
@@ -87,6 +83,8 @@ void MainWindow::initAction(int tabCount)
     ui->cut->setEnabled(valid);
     ui->undo->setEnabled(valid);
     ui->redo->setEnabled(valid);
+    ui->actionstep->setEnabled(valid);
+    ui->actionstepfunc->setEnabled(valid);
 }
 
 //初始化菜单
@@ -160,7 +158,11 @@ void MainWindow::saveHistory(QString path){
     mSettings->endArray();
 }
 
-
+void MainWindow::receiveImageFromNPC(const QImage &image)
+{
+    QPixmap pix = QPixmap::fromImage(image).scaled(ui->label_2->size());
+    ui->label_2->setPixmap(pix);
+}
 
 //新建文件
 void MainWindow::on_new_file_triggered()
@@ -194,7 +196,7 @@ void MainWindow::on_open_dir_triggered()
 void MainWindow::on_save_file_triggered()
 {
     //把保存交给CodeEditor
-    MyCodeEditor *codeEditor = (MyCodeEditor* )mSplitterLayout->getTabWidget()->currentWidget();
+    CodeEditor *codeEditor = (CodeEditor* )mSplitterLayout->getTabWidget()->currentWidget();
     if(codeEditor){
         if(codeEditor->saveFile()){
             saveSuccessAction(codeEditor);
@@ -206,7 +208,7 @@ void MainWindow::on_save_file_triggered()
 void MainWindow::on_save_as_triggered()
 {
     //把另存为交给CodeEditor
-    MyCodeEditor *codeEditor = (MyCodeEditor* )mSplitterLayout->getTabWidget()->currentWidget();
+    CodeEditor *codeEditor = (CodeEditor* )mSplitterLayout->getTabWidget()->currentWidget();
     if(codeEditor){
         if(codeEditor->saveAsFile()){
             saveSuccessAction(codeEditor);
@@ -218,7 +220,7 @@ void MainWindow::on_save_as_triggered()
 void MainWindow::on_copy_triggered()
 {
     //把复制交给CodeEditor
-    MyCodeEditor *codeEditor = (MyCodeEditor* )mSplitterLayout->getTabWidget()->currentWidget();
+    CodeEditor *codeEditor = (CodeEditor* )mSplitterLayout->getTabWidget()->currentWidget();
     if(codeEditor){
         codeEditor->copy();
     }
@@ -228,7 +230,7 @@ void MainWindow::on_copy_triggered()
 void MainWindow::on_paste_triggered()
 {
     //把粘贴交给CodeEditor
-    MyCodeEditor *codeEditor = (MyCodeEditor* )mSplitterLayout->getTabWidget()->currentWidget();
+    CodeEditor *codeEditor = (CodeEditor* )mSplitterLayout->getTabWidget()->currentWidget();
     if(codeEditor){
         codeEditor->paste();
     }
@@ -238,7 +240,7 @@ void MainWindow::on_paste_triggered()
 void MainWindow::on_cut_triggered()
 {
     //把剪切交给CodeEditor
-    MyCodeEditor *codeEditor = (MyCodeEditor* )mSplitterLayout->getTabWidget()->currentWidget();
+    CodeEditor *codeEditor = (CodeEditor* )mSplitterLayout->getTabWidget()->currentWidget();
     if(codeEditor){
         codeEditor->cut();
     }
@@ -248,7 +250,7 @@ void MainWindow::on_cut_triggered()
 void MainWindow::on_undo_triggered()
 {
     //把撤销交给CodeEditor
-    MyCodeEditor *codeEditor = (MyCodeEditor* )mSplitterLayout->getTabWidget()->currentWidget();
+    CodeEditor *codeEditor = (CodeEditor* )mSplitterLayout->getTabWidget()->currentWidget();
     if(codeEditor){
         codeEditor->undo();
     }
@@ -258,7 +260,7 @@ void MainWindow::on_undo_triggered()
 void MainWindow::on_redo_triggered()
 {
     //把取消撤销交给CodeEditor
-    MyCodeEditor *codeEditor = (MyCodeEditor* )mSplitterLayout->getTabWidget()->currentWidget();
+    CodeEditor *codeEditor = (CodeEditor* )mSplitterLayout->getTabWidget()->currentWidget();
     if(codeEditor){
         codeEditor->redo();
     }
@@ -280,7 +282,7 @@ void MainWindow::on_font_triggered()
 void MainWindow::on_print_triggered()
 {
     //把打印交给CodeEditor
-    MyCodeEditor *codeEditor = (MyCodeEditor* )mSplitterLayout->getTabWidget()->currentWidget();
+    CodeEditor *codeEditor = (CodeEditor* )mSplitterLayout->getTabWidget()->currentWidget();
     if(codeEditor){
 #if defined(QT_PRINTSUPPORT_LIB) && QT_CONFIG(printer)
         QPrinter printDev;
@@ -297,14 +299,15 @@ void MainWindow::on_print_triggered()
 //关于
 void MainWindow::on_about_triggered()
 {
-    QMessageBox::about(this,"这是我的Notepad！","这是我的Notepad，欢迎学习和使用！");
+    QMessageBox::about(this,"This is a IDE","this is a IDE, welcom to use");
 }
 
 
 //退出
 void MainWindow::on_exit_triggered()
 {
-    QCoreApplication::exit();
+    monitor->stop();
+    onDestroyWindow();
 }
 
 
@@ -314,7 +317,7 @@ void MainWindow::on_clear_history_triggered()
     initMenu();
 }
 
-void MainWindow::saveSuccessAction( MyCodeEditor * codeEditor)
+void MainWindow::saveSuccessAction( CodeEditor * codeEditor)
 {
     QString fileName  = codeEditor->getFileName();
     //保存历史
@@ -325,15 +328,30 @@ void MainWindow::saveSuccessAction( MyCodeEditor * codeEditor)
     initMenu();
 }
 
+
 void MainWindow::closeEvent(QCloseEvent *event)
 {
+    monitor->stop();
+
     if(mSplitterLayout->getTabWidget()->count()>0){
+        if(mSplitterLayout->getTabWidget()->count() == 1)
+        {
+            // 获取当前选中的 tab 的索引
+            int currentIndex = mSplitterLayout->getTabWidget()->currentIndex();
+            // 获取当前 tab 标签上的文本
+            QString currentTabLabel = mSplitterLayout->getTabWidget()->tabText(currentIndex);
+            if(currentTabLabel == "Debugging")
+            {
+                onDestroyWindow();
+                return;
+
+            }
+        }
         QMessageBox::question(this,
-                              "警告",
-                              "有未保存的文件，确定要关闭吗？",
+                              "warnning",
+                              "Are you sure you want to close the unsaved files?",
                               QMessageBox::Yes|QMessageBox::No)==QMessageBox::Yes?event->accept():event->ignore();
     }
-    // emit quitSBD();
     onDestroyWindow();
 }
 
@@ -346,30 +364,59 @@ void MainWindow::onFinishCreateTab(const QString &filePath)
 
 void MainWindow::onItemClicked(QListWidgetItem *item)
 {
-//    if (item)
-//    {
-//        qDebug() << "Clicked item text:" << item->text();
-//    }
     Q_UNUSED(item)
 
     // 判断点击了哪一个 QListWidget
     if (ui->listWidget->currentRow() != -1)
     {
-//        qDebug() << "Clicked QListWidget:" << ui->listWidget->currentRow() + 1;
         ui->stackedWidget->setCurrentIndex(ui->listWidget->currentRow());
     }
-}
-
-void MainWindow::receiveNPCInfo(unsigned int pc, unsigned int inst)
-{
-    // 将 VlUnpacked 数组转换为标准的 unsigned int 数组
-    for (int i = 0; i < 32; ++i) {
-        reg_file_val[i] = static_cast<unsigned int>(mNPC->top->rootp->CPU__DOT__reg_file__DOT__rf[i]);
-    }
-    emit sendRegValueToUI(reg_file_val);
 }
 
 void MainWindow::onDestroyWindow() 
 {
     this->deleteLater();
+}
+
+void MainWindow::init(unsigned int * vmem_addr, int inst_num)
+{
+    mSplitterLayout->splitterlayoutInit(vmem_addr, inst_num);
+    mSplitterLayout->showSourceFromElf(QString::fromStdString(monitor->ftrace->src));
+}
+
+void MainWindow::exec()
+{
+    // mNPC->exec(-1);
+    mNPC->start();
+}
+
+void MainWindow::execOne()
+{
+    for(int i = 0; i < mSplitterLayout->srcMapInst.size(); ++i){
+      
+        QPair<int, int> pair = mSplitterLayout->srcMapInst.at(i);
+        if(pair.second == riscv32_reg->pc)
+        {
+            mSplitterLayout->showSrcMapInst(pair.first+1);
+        }
+    }
+    mNPC->exec(1);
+}
+
+void MainWindow::isDebugMode(bool checked)
+{
+    if(checked)
+    {
+        mNPC->debug_flag = true;
+        qDebug() << "debug";
+        ui->actionstep->setEnabled(true);
+        ui->actionstepfunc->setEnabled(true);
+    }
+    else
+    {
+        mNPC->debug_flag = false;
+        qDebug() << "no debug";
+        ui->actionstep->setEnabled(false);
+        ui->actionstepfunc->setEnabled(false);
+    }
 }

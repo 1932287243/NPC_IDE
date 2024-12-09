@@ -22,11 +22,11 @@ module ALU(
             4'b0011:  ALUout = rs1 < rs2 ? 1 : 0;
             4'b0100:  ALUout = rs1 ^ rs2;
             4'b0101:  ALUout = rs1 >> rs2[4:0];
-            4'b1101:  ALUout = rs1 >>> rs2[4:0];
+            4'b1101:  ALUout = signed_a >>> rs2[4:0];
             4'b0110:  ALUout = rs1 | rs2;
             4'b0111:  ALUout = rs1 & rs2;
-            4'b1001:  ALUout = 32'h0;
-            4'b1010:  ALUout = 32'h0;
+            4'b1001:  ALUout = rs2;
+            4'b1010:  ALUout = rs1;
             4'b1011:  ALUout = 32'h0;
             4'b1100:  ALUout = 32'h0;
             4'b1110:  ALUout = rs2;

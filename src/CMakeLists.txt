@@ -1,5 +1,5 @@
-find_package(Qt5 COMPONENTS Core Gui REQUIRED)
-
+# find_package(Qt5 COMPONENTS Core Gui REQUIRED)
+find_package(Qt5 REQUIRED COMPONENTS Core Widgets Gui OpenGL)
 # 查找PrintSupport库
 find_package(Qt5 COMPONENTS PrintSupport)
 
@@ -19,48 +19,71 @@ set(CMAKE_AUTOUIC_SEARCH_PATHS ${CMAKE_SOURCE_DIR}/ui ${CMAKE_SOURCE_DIR}/res)
 # 指定 UI 文件所在的目录
 set(UI_FILES
     ${PROJECT_SOURCE_DIR}/ui/mainwindow.ui
-    ${PROJECT_SOURCE_DIR}/ui/mytextedit.ui
+    ${PROJECT_SOURCE_DIR}/ui/textedit.ui
 )
 
 # 指定资源文件所在的目录
 set(QRC_FILES
     ${PROJECT_SOURCE_DIR}/res/images.qrc
     ${PROJECT_SOURCE_DIR}/res/code.qrc
+    ${PROJECT_SOURCE_DIR}/res/resources.qrc
 )
+
+set(SOURCE_DEVICE_DIR "${PROJECT_SOURCE_DIR}/src/device")
+file(GLOB SOURCE_DEVICE_FILES "${SOURCE_DEVICE_DIR}/*.cpp")
+
+set(SOURCE_MONITOR_DIR "${PROJECT_SOURCE_DIR}/src/monitor")
+file(GLOB SOURCE_MONITOR_FILES "${SOURCE_MONITOR_DIR}/*.cpp")
+
+set(SOURCE_SDB_DIR "${PROJECT_SOURCE_DIR}/src/monitor/sdb")
+file(GLOB SOURCE_SDB_FILES "${SOURCE_SDB_DIR}/*.cpp")
+
+set(SOURCE_TOOLS_DIR "${PROJECT_SOURCE_DIR}/src/monitor/tools")
+file(GLOB SOURCE_TOOLS_FILES "${SOURCE_TOOLS_DIR}/*.cpp")
 
 set(SOURCE_UI_DIR "${PROJECT_SOURCE_DIR}/src/ui")
 file(GLOB SOURCE_UI_FILES "${SOURCE_UI_DIR}/*.cpp")
-set(SOURCE_SDB_DIR "${PROJECT_SOURCE_DIR}/src/sdb")
-file(GLOB SOURCE_SDB_FILES "${SOURCE_SDB_DIR}/*.cpp")
-set(SOURCE_FILES ${SOURCE_UI_FILES} ${SOURCE_SDB_FILES} )
+
+set(SOURCE_UTILS_DIR "${PROJECT_SOURCE_DIR}/src/utils")
+file(GLOB SOURCE_UTILS_FILES "${SOURCE_UTILS_DIR}/*.cpp")
+
+# set(SOURCE_QTNODES_DIR "${PROJECT_SOURCE_DIR}/thirdpkg/QtNodes/src")
+# file(GLOB SOURCE_QTNODES_FILES "${SOURCE_QTNODES_DIR}/*.cpp")
+set(SOURCE_FILES  ${PROJECT_SOURCE_DIR}/src/main.cpp 
+                  ${SOURCE_UTILS_FILES} 
+                  ${SOURCE_UI_FILES} 
+                  ${SOURCE_SDB_FILES} 
+                  ${SOURCE_TOOLS_FILES}
+                  ${SOURCE_MONITOR_FILES}
+                  ${SOURCE_DEVICE_FILES})
 
 set(INCLUDE_UI_DIR "${PROJECT_SOURCE_DIR}/include/ui")
 file(GLOB INCLUDE_UI_FILES "${INCLUDE_UI_DIR}/*.h")
-set(INCLUDE_SDB_DIR "${PROJECT_SOURCE_DIR}/include/sdb")
+
+set(INCLUDE_MONITOR_DIR "${PROJECT_SOURCE_DIR}/include/monitor")
+file(GLOB INCLUDE_MONITOR_FILES "${INCLUDE_MONITOR_DIR}/*.h")
+
+set(INCLUDE_SDB_DIR "${PROJECT_SOURCE_DIR}/include/monitor/sdb")
 file(GLOB INCLUDE_SDB_FILES "${INCLUDE_SDB_DIR}/*.h")
-set(INCLUDE_FILES ${INCLUDE_UI_FILES} ${INCLUDE_SDB_FILES})
 
-# add_executable(IDE 
-#             ${SOURCES_FILES}
-#             ${INCLUDE_FILES}
-# )
+set(INCLUDE_TOOLS_DIR "${PROJECT_SOURCE_DIR}/include/monitor/tools")
+file(GLOB INCLUDE_TOOLS_FILES "${INCLUDE_TOOLS_DIR}/*.h")
 
-# # add_dependencies(IDE CopyCommand)
-# target_include_directories(IDE  PRIVATE ${PROJECT_SOURCE_DIR}/include/ui)
-# # Qt5::Widgets 
-# target_link_libraries(IDE PRIVATE Qt5::Core Qt5::Gui)
+set(INCLUDE_UTILS_DIR "${PROJECT_SOURCE_DIR}/include/utils")
+file(GLOB INCLUDE_UTILS_FILES "${INCLUDE_UTILS_DIR}/*.h")
 
-# if(Qt5PrintSupport_FOUND)
-#     target_link_libraries(IDE PRIVATE Qt5::PrintSupport)
-# endif()
+set(INCLUDE_DEVICE_DIR "${PROJECT_SOURCE_DIR}/include/device")
+file(GLOB INCLUDE_DEVICE_FILES "${INCLUDE_DEVICE_DIR}/*.h")
 
-# verilate(IDE
-#   INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/src/vsrc
-#   SOURCES CPU.v
-#   VERILATOR_ARGS -O3 --x-assign fast --x-initial fast --noassert  --trace)
+# message(${INCLUDE_UTILS_FILES})
 
+set(INCLUDE_FILES   ${PROJECT_SOURCE_DIR}/include/main.h 
+                    ${INCLUDE_UTILS_FILES} 
+                    ${INCLUDE_UI_FILES} 
+                    ${INCLUDE_MONITOR_FILES} 
+                    ${INCLUDE_TOOLS_FILES} 
+                    ${INCLUDE_SDB_FILES} 
+                    ${INCLUDE_DEVICE_FILES})
 
-# set(IDE_TARGET IDE)
 add_subdirectory(vsrc)
-# target_link_libraries(IDE PRIVATE sm)
 

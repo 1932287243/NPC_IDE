@@ -4,15 +4,16 @@
 #include <QMainWindow>
 #include "QSettings"
 #include <QListWidget>
-#include "myfilesystemmodel.h"
-#include "mycodeeditor.h"
-#include "mysplitterlayout.h"
-#include "npc.h"
+#include <QImageReader>
+
+#include "filesystemmodel.h"
+#include "codeeditor.h"
+#include "splitterlayout.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
-class NPC;
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -21,16 +22,17 @@ public:
     MainWindow( int argc, char **argv, QWidget *parent = nullptr);
     ~MainWindow();
 
-    NPC *mNPC;
-    MySplitterLayout *mSplitterLayout ;
+    SplitterLayout *mSplitterLayout ;
     
-    void saveSuccessAction( MyCodeEditor * codeEditor);
+    void saveSuccessAction( CodeEditor * codeEditor);
     void addFolder(QString filePath);
+    void init(unsigned int * vmem_addr, int inst_num);
 
 protected:
-
     void closeEvent(QCloseEvent *event);
 
+public slots:
+    void onDestroyWindow();
 
 private slots:
     void on_new_file_triggered();
@@ -64,14 +66,15 @@ private slots:
     void onFinishCreateTab(const QString &filePath);
 
     void onItemClicked(QListWidgetItem *item);
+
+    void receiveImageFromNPC(const QImage &image);
+
+    void exec();
+
+    void execOne();
+
+    void isDebugMode(bool checked);
     
-    void receiveNPCInfo(unsigned int pc, unsigned int inst);
-
-    void onDestroyWindow();
-signals:
-    void sendRegValueToUI(unsigned int * reg_val);
-    // void quitSBD(int flag);
-
 private:
     Ui::MainWindow *ui;
 
